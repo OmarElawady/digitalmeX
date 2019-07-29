@@ -1,37 +1,29 @@
 from collections import defaultdict
 from .backend import BackendMixin
-import json
-
+from pickle import loads, dumps
+import os
 
 def format_object_id(schema, id):
     return "{}://{}".format(schema, id)
 
-
-class FakeKV:
-    def __init__(self):
-        self._database = {}
-
-    def set(self, key, obj):
-        self._database[key] = obj
-
-    def exists(self, key):
-        return key in self._database
-
-    def get(self, key, default):
-        try:
-            return self._database[key]
-        except:
-            return default
-
-
-class DummyKV(BackendMixin):
-    def __init__(self):
+class Pickle(BackendMixin):
+    def __init__(self, pickledbpath="/tmp/gundb.dat"):
         self.db = defaultdict(lambda: defaultdict(lambda: defaultdict()))
-        self.kv = FakeKV()
+        self.pickledbpath = pickledbpath
+        self.pickledb = None
+        if os.path.exists(self.pickledbpath ):
+            with open(self.pickledbpath , "rb") as f:
+                self.pickledb = loads(f.read())
+        else:
+            self.pickledb = {}
+
+    def savedb(self):
+        with open(self.pickledbpath, "wb") as f:
+            f.write(dumps(self.pickledb))
 
     def get_object_by_id(self, obj_id, schema=None):
         full_id = format_object_id(schema, obj_id)
-        return self.kv.get(full_id, {"id": obj_id})
+        return self.pickledb.get(full_id, {'id':obj_id})
 
     def set_object_attr(self, obj, attr, val):
         obj[attr] = val
@@ -39,7 +31,8 @@ class DummyKV(BackendMixin):
 
     def save_object(self, obj, obj_id, schema=None):
         full_id = format_object_id(schema, obj_id)
-        self.kv.set(full_id, json.dumps(obj))
+        self.pickledb[full_id] = obj
+        self.savedb()
 
     def __setitem__(self, k, v):
         self.db[k] = v

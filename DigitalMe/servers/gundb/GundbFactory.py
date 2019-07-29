@@ -2,6 +2,7 @@ from Jumpscale import j
 from .GeventGunServer import GeventGunServer
 from geventwebsocket import WebSocketServer, WebSocketApplication, Resource
 from collections import OrderedDict
+import textwrap
 
 JSBASE = j.application.JSBaseClass
 
@@ -70,7 +71,6 @@ class GundbFactory(JSBASE):
                 yield "START"
                 yield "MIDDLE"
                 yield "END"
-
             # add a bottle webserver to it
             rack.bottle_server_add(name="bottle", port=7767, app=app)
 
@@ -82,19 +82,22 @@ class GundbFactory(JSBASE):
 
         else:
 
-            S = """
-            from gevent import monkey
-            monkey.patch_all(subprocess=False)
-            from Jumpscale import j
-            
-            #start the gundb server using gevent rack
-            j.servers.gundb._server_test_start()
+            S = textwrap.dedent("""
+                from gevent import monkey
+                monkey.patch_all(subprocess=False)
+                from Jumpscale import j
+
+                #start the gundb server using gevent rack
+                j.servers.gundb._server_test_start()
                         
-            """
+            """)
 
-            S = j.core.tools.text_replace(S, args)
-
-            s = j.servers.startupcmd.new(name="gundb_test")
+            # S = j.core.tools.text_replace(S)
+            s = None
+            try:
+                s = j.servers.startupcmd.get(name="gundb_test5")
+            except:
+                s = j.servers.startupcmd.new(name="gundb_test5") 
             s.cmd_start = S
             # the MONKEY PATCH STATEMENT IS A WEIRD ONE, will make sure that before starting monkeypatching will be done
             s.executor = "tmux"
@@ -112,6 +115,6 @@ class GundbFactory(JSBASE):
         """
 
         self._server_test_start(background=True)
-        j.shell()
+        # j.shell()
 
         print("tests are ok")

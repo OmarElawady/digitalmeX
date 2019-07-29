@@ -1,6 +1,6 @@
 import re
 import json
-from .consts import *
+from ..consts import *
 from .backend import BackendMixin
 import Jumpscale
 from Jumpscale import j
@@ -8,101 +8,78 @@ from collections import defaultdict
 
 SCHEME_UID_PAT = "(?P<schema>.+?)://(?P<id>.+)"
 
-j.data.schema.add_from_text(
-    """
+schemas = ["""
 @url = proj.todoitem
 title* = "" (S)
 done* = False (B)
 
-"""
-)
+""",
 
-j.data.schema.add_from_text(
-    """
+"""
 @url = proj.todolist
 name* = "" (S)
 list_todos* = (LO) !proj.todoitem
 
 """
-)
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.simple
 attr1* = "" (S)
 attr2* = 0 (I)
 list_mychars* = (LS) 
 """
-)
-
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.email
 addr* = "" (S)
 """
-)
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.person
 name* = "" (S)
-email* = "" !proj.email
+email* = (O) !proj.email
 """
-)
-
-
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.os
 name* = "" (S)
 """
-)
-
-
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.phone
 model* = "" (S)
-os* = "" !proj.os
+os* = !proj.os
 """
-)
-
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.lang
 name* = ""
 """
-)
-
-
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.human
 name* = "" (S)
 list_favcolors = (LS)
 list_langs = (LO) !proj.lang
-phone* = "" !proj.phone
+phone* = (O) !proj.phone
 """
-)
-
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.post
 name = "" (S)
 title* = "" (S)
 body = "" (S)
 
 """
-)
-
-j.data.schema.add_from_text(
-    """
+,
+"""
 @url = proj.blog
 name* = "" (S)
 list_posts = (LO) !proj.post
 headline = "" (S)
 
 """
-)
-
+]
 
 def parse_schema_and_id(s):
     m = re.match(SCHEME_UID_PAT, s)
@@ -121,7 +98,10 @@ class BCDB(BackendMixin):
             self.bcdb = j.data.bcdb.new(name=name)
 
         self.bcdb.reset()
-
+        for s in schemas:
+            m = self.bcdb.model_get_from_schema(s)
+            # o = m.new()
+            # o.save()
     def get_schema_by_url(self, url):
         schema = j.data.schema.get_from_url_latest(url=url)
         return schema
@@ -133,9 +113,11 @@ class BCDB(BackendMixin):
     def get_object_by_id(self, obj_id, schema=None):
         m = self.get_model_by_schema_url(schema)
         try:
-            return m.get(obj_id=obj_id)
+            return m.get_by_id(obj_id)
         except:
             o = m.new()
+            o._model = m
+            import ipdb; ipdb.set_trace()
             o.save()
             return o
 
@@ -145,6 +127,7 @@ class BCDB(BackendMixin):
 
     def save_object(self, obj, obj_id, schema=None):
         obj.save()
+        print("obj: ", obj)
 
     def __setitem__(self, k, v):
         self.db[k] = v

@@ -6,20 +6,30 @@ import json
 def format_object_id(schema, id):
     return "{}://{}".format(schema, id)
 
+class FakeKV:
+    def __init__(self):
+        self._database = {}
 
-class RedisKV(BackendMixin):
-    def __init__(self, host="127.0.0.1", port=6379):
-        from redis import Redis
+    def set(self, key, obj):
+        self._database[key] = obj
+    
+    def exists(self, key):
+        return key in self._database
 
+    def get(self, key, default):
+        try:
+            return self._database[key]
+        except:
+            return default
+
+class DummyKV(BackendMixin):
+    def __init__(self):
         self.db = defaultdict(lambda: defaultdict(lambda: defaultdict()))
-        self.redis = Redis(host=host, port=port)
+        self.kv = FakeKV()
 
     def get_object_by_id(self, obj_id, schema=None):
         full_id = format_object_id(schema, obj_id)
-        if self.redis.exists(full_id):
-            return json.loads(self.redis.get(full_id))
-        else:
-            return {"id": obj_id}
+        return self.kv.get(full_id, {'id':obj_id})
 
     def set_object_attr(self, obj, attr, val):
         obj[attr] = val
@@ -27,7 +37,7 @@ class RedisKV(BackendMixin):
 
     def save_object(self, obj, obj_id, schema=None):
         full_id = format_object_id(schema, obj_id)
-        self.redis.set(full_id, json.dumps(obj))
+        self.kv.set(full_id, json.dumps(obj))
 
     def __setitem__(self, k, v):
         self.db[k] = v

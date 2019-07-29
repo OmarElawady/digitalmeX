@@ -44,7 +44,8 @@ class ServerRackFactory(JSBASE):
             self.current = sr
         else:
             raise RuntimeError("can only work with 1 rack for now")
-
+        return self.current
+    
     def install(self):
         """
         kosmos 'j.servers.rack._server_test_start()'

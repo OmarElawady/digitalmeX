@@ -1,7 +1,6 @@
 from collections import defaultdict
 from .backend import BackendMixin
 
-
 class cuteobj:
     def __getattr__(self, attr):
         if attr in dir(self):
@@ -12,8 +11,7 @@ class cuteobj:
     def __str__(self):
         return "cuteobj: {} ".format(str(self.__dict__))
 
-
-class MemoryDB(BackendMixin):
+class Memory(BackendMixin):
     def __init__(self):
         self.db = defaultdict(lambda: defaultdict(lambda: defaultdict()))
         self.objs = defaultdict(lambda: cuteobj())
