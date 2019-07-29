@@ -4,6 +4,7 @@ from ..consts import *
 from .resolvers import *
 from .utils import *
 import logging
+from attributedict.collections import AttributeDict
 
 #def uniquify(lst):
 #    #lst might be a list of objects
@@ -68,13 +69,10 @@ class BackendMixin:
             root = path[0]
             path = path[1:] + [key]
         schema, index = parse_schema_and_id(root)
-        original = self.get_object_by_id(index, schema)
-        try:
-            root_object = defaultify(original)
-        except:
-            self.save_object(original, index, schema) # save it once ..
-            root_object = defaultify(original._ddict_hr)
-        value = fix_lists(resolve_v(value, graph))
+        root_object = self.get_object_by_id(index, schema)
+        if isinstance(root_object, dict):
+            root_object = AttributeDict(root_object)
+        value = resolve_v(value, graph)
         list_index = get_first_list_prop(path)
         if list_index != -1:
             self.update_list(root, path[:list_index + 1], soul, root_object, schema, index, graph)
@@ -82,10 +80,7 @@ class BackendMixin:
             self.update_normal(path, value, root_object, schema, index)
         logging.debug("Updated successfully!")
         
-        if hasattr(original, "_model"):
-            import ipdb; ipdb.set_trace()
-            original._model.set_dynamic(root_object, original.id,1)
-        self.save_object(original, index, schema)
+        self.save_object(root_object, index, schema)
 
     def get(self, soul, key=None):
         ret = {SOUL: soul, METADATA:{SOUL:soul, STATE:{}}}
@@ -114,7 +109,7 @@ class BackendMixin:
             current = graph[current[e][METADATA][SOUL]]
 
         list_id = current[path[-1]][SOUL]
-        self.update_normal(path, fix_lists(resolve_v({SOUL: list_id}, graph)), root_object, schema, index)
+        self.update_normal(path, resolve_v({SOUL: list_id}, graph), root_object, schema, index)
         return 0
 
     def update_normal(self, path, value, root_object, schema, index):
@@ -130,14 +125,19 @@ class BackendMixin:
         """
         key = path[-1]
         if key.startswith('list_'):
-            value = eliminate_nones(listify(value)) # Extract the list from value.keys() and eliminate None values.
+            assert(isinstance(value, dict))
+            value = self.convert_list_to_db_form(type(root_object), value) # Extract the list from value.keys() and eliminate None values.
+        elif isinstance(value, dict):
+            value = self.convert_obj_to_db_form(type(root_object), value)
+        
         current = root_object
         for e in path[:-1]:
             try:
-                try:
-                    current = getattr(current, e)
-                except:
-                    current = current[e]                    
+
+                if not hasattr(current, e):
+                    setattr(current, e, type(root_object)())
+
+                current = getattr(current, e)
             except:# The path doesn't exist in the db
                 # Ignore the request
                 logging.debug("Couldn't traverse the database for the found path.")
@@ -149,10 +149,30 @@ class BackendMixin:
 
                 #logging.debug("graph: {}\n\n".format(json.dumps(graph, indent = 4)))
                 return 0
-        try:
-            current[path[-1]] = value
-        except:
-            try:
-                setattr(current, path[-1], value)
-            except:
-                import ipdb; ipdb.set_trace()
+        setattr(current, path[-1], value)
+    
+    def convert_children_to_db_form(self, db_type, value):
+        assert(isinstance(value, dict))
+        for k, v in value.items():
+            if k.startswith("list_"):
+                assert(isinstance(v, dict))
+                value[k] = self.convert_list_to_db_form(db_type, v)
+            elif isinstance(v, dict):
+                value[k] = self.convert_obj_to_db_form(db_type, v)
+            else:
+                value[k] = v
+        return value
+
+    def convert_obj_to_db_form(self, db_type, value):
+        assert(isinstance(value, dict))
+        obj = db_type()
+        converted_children = self.convert_children_to_db_form(db_type, value)
+        for k, v in converted_children.items():
+                setattr(obj, k, v)
+        return obj
+
+    def convert_list_to_db_form(self, db_type, value):
+        assert(isinstance(value, dict))
+        lst = []
+        converted = self.convert_children_to_db_form(db_type, value)
+        return eliminate_nones(uniquify(converted.values()))

@@ -1,3 +1,5 @@
+from geventwebsocket import WebSocketServer, WebSocketApplication, Resource
+from collections import OrderedDict
 import json
 import uuid
 from .utils import *
@@ -150,3 +152,10 @@ class GeventGunServer(WebSocketApplication, j.application.JSBaseClass):
                     continue
                 app.backend.put(soul, k, v, diff[soul][METADATA][STATE][k], graph)
         return graph
+
+
+geventserverapp = WebSocketServer(
+    ('', 8000),
+    Resource(OrderedDict([('/', GeventGunServer)]))
+)
+
