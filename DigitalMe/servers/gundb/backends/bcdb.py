@@ -11,22 +11,20 @@ SCHEME_UID_PAT = "(?P<schema>.+?)://(?P<id>.+)"
 schemas = ["""
 @url = proj.todoitem
 title* = "" (S)
-done* = False (B)
-
+done = False (B)
 """,
 
 """
 @url = proj.todolist
 name* = "" (S)
-list_todos* = (LO) !proj.todoitem
-
+list_todos = (LO) !proj.todoitem
 """
 ,
 """
 @url = proj.simple
 attr1* = "" (S)
-attr2* = 0 (I)
-list_mychars* = (LS) 
+attr2 = 0 (I)
+list_mychars = (LS) 
 """
 ,
 """
@@ -37,7 +35,7 @@ addr* = "" (S)
 """
 @url = proj.person
 name* = "" (S)
-email* = (O) !proj.email
+email = (O) !proj.email
 """
 ,
 """
@@ -48,7 +46,7 @@ name* = "" (S)
 """
 @url = proj.phone
 model* = "" (S)
-os* = !proj.os
+os = (O) !proj.os
 """
 ,
 """
@@ -61,7 +59,7 @@ name* = ""
 name* = "" (S)
 list_favcolors = (LS)
 list_langs = (LO) !proj.lang
-phone* = (O) !proj.phone
+phone = (O) !proj.phone
 """
 ,
 """
@@ -69,7 +67,6 @@ phone* = (O) !proj.phone
 name = "" (S)
 title* = "" (S)
 body = "" (S)
-
 """
 ,
 """
@@ -77,7 +74,6 @@ body = "" (S)
 name* = "" (S)
 list_posts = (LO) !proj.post
 headline = "" (S)
-
 """
 ]
 
@@ -99,6 +95,7 @@ class BCDB(BackendMixin):
 
         self.bcdb.reset()
         for s in schemas:
+            j.data.schema.add_from_text(s)
             m = self.bcdb.model_get_from_schema(s)
             # o = m.new()
             # o.save()
@@ -113,11 +110,13 @@ class BCDB(BackendMixin):
     def get_object_by_id(self, obj_id, schema=None):
         m = self.get_model_by_schema_url(schema)
         try:
-            return m.get_by_id(obj_id)
+            return m.get(obj_id=obj_id)
         except:
-            o = m.new()
+            #import ipdb; ipdb.set_trace()
+            o = m.new({'id':int(obj_id)})
+            #o = m.new()
             o._model = m
-            import ipdb; ipdb.set_trace()
+
             o.save()
             return o
 
