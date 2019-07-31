@@ -31,7 +31,7 @@ def listify(attr):
     Otherwise, return its value as is.
     """
     if isinstance(attr, dict):
-        return uniquify(fix_lists(attr).values())
+        return eliminate_nones(uniquify(fix_lists(attr).values()))
     else:
         return attr
 
