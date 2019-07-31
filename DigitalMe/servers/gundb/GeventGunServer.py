@@ -20,7 +20,7 @@ from geventwebsocket import WebSocketApplication
 # import redis
 # import time
 # from time import sleep
-
+import logging
 
 class App:
     def __init__(self, backend):
@@ -33,6 +33,7 @@ app = App(BCDB())
 
 class GeventGunServer(WebSocketApplication, j.application.JSBaseClass):
     def __init__(self, ws):
+        logging.basicConfig(level=logging.DEBUG)
         WebSocketApplication.__init__(self, ws)
         j.application.JSBaseClass.__init__(self)
 
